@@ -13,6 +13,17 @@
 
 ## Workflow
 
+##Ecs stack 
+
+Resources 
+*Cluster
+VPC
+Subnets
+Auto Scaling group with Linux AMI
+*
+*
+*
+
 
  
  
