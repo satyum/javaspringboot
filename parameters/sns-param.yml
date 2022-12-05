@@ -1,0 +1,3 @@
+template: 'sns'
+description: 'Deploys Lambda for api-gateway-v2-registrator'
+SNSEmail: satyamnegg@gmail.com

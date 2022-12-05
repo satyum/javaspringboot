@@ -1,0 +1,9 @@
+template: 'ecs'
+description: 'Deploys ecs using fargate'
+appName: 'app1'
+ecs:
+  
+  myService: app1-service
+  containerPort: 8080
+  cpu: 1024
+  memory: 2GB

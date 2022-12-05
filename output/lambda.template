@@ -1,0 +1,10 @@
+Resources:
+  LambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: AwsLambdaMinimalExample
+      Handler: src/index.run
+      Runtime: nodejs12.x
+      MemorySize: 1024
+      Timeout: 60
+      Code: artifacts

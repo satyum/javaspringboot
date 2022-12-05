@@ -1,0 +1,9 @@
+template: 'lambda'
+description: 'Deploys Lambda for api-gateway-v2-registrator'
+appName: 'ApiGatewayReg'
+lambda:
+  runtime: nodejs12.x
+  handler: src/index.run
+  code: artifacts  #artifacts/inline in case of inline it looks for scripts directory along with this yaml file.
+  memorySize: 1024
+  timeout: 60

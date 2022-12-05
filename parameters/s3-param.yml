@@ -1,0 +1,7 @@
+template: 's3'
+description: 'Deploys s3'
+s3Bucket:
+  type: 'AWS::S3::Bucket'
+  deletionPolicy: Retain
+  properties:
+  bucketName: my-test-bucket
