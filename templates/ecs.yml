@@ -1,219 +1,89 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: {{ description }}
+Description: An example CloudFormation template for Fargate.
 Parameters:
   
-  # Certificate:
-  #   Type: String
-  #   Default: 'arn:aws:acm:us-east-2:920048411410:certificate/05bc00c7-f3b2-4e0f-85a6-508b735facd4'
-  Image:
+  ImageUri:
     Type: String
-    Default: nginx
-  AppName:
-    Description: {{ description }}
-    Type: String
-    Default: {{ appName }}
+    Default: {{ ecs.Image }}
   ServiceName:
     Type: String
-    Default:  {{ ecs.myService }}
+    Default: {{ ecs.ServiceName}}
   ContainerPort:
     Type: Number
-    Default:  {{ ecs.containerPort }}
-  Cpu:
-    Type: Number
-    Default: {{ ecs.cpu }}
-  Memory:
-    Type: String
-    Default:  {{ ecs.memory }}
+    Default: {{ ecs.ContainerPort }}
 
   LoadBalancerPort:
     Type: Number
-    Default: 80
+    Default: {{ ecs.LoadBalancerPort }}
   HealthCheckPath:
     Type: String
-    Default: /
+    Default: {{ ecs.HealthCheckPath }}
   
   MinContainers:
     Type: Number
-    Default: 1
+    Default: {{ ecs.MinContainers }}
   # for autoscaling
   MaxContainers:
     Type: Number
-    Default: 2
-  # target CPU utilization (%)
+    Default: {{ ecs.MaxContainers }}
+
   AutoScalingTargetValue:
     Type: Number
     Default: 50
-
-Resources:
-  ## VPC
-  VPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: 10.0.0.0/16
-
-  ## SUBNETS
-  PublicSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      AvailabilityZone: us-east-1a
-      CidrBlock: 10.0.1.0/24
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: public-subnet-1
-
-  PublicSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      AvailabilityZone: us-east-1b
-      CidrBlock: 10.0.2.0/24
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: public-subnet-2
-
-  PrivateSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      AvailabilityZone: us-east-1a
-      CidrBlock: 10.0.3.0/24
-      MapPublicIpOnLaunch: false
-      Tags:
-        - Key: Name
-          Value: private-subnet-1
-
-  PrivateSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      AvailabilityZone: us-east-1b
-      CidrBlock: 10.0.4.0/24
-      MapPublicIpOnLaunch: false
-      Tags:
-        - Key: Name
-          Value: private-subnet-1
-
-  ## INTERNET GATEWAY
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
-
-  ## Gateway Attachment
-  GatewayToInternet:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      VpcId: !Ref VPC
-      InternetGatewayId: !Ref InternetGateway
-
-  ## PUBLIC ROUTING
-  PublicRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: public-rt
-
-  PublicRoute:
-    Type: AWS::EC2::Route
-    DependsOn: GatewayToInternet
-    Properties:
-      RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
-
-  PublicSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet1
-      RouteTableId: !Ref PublicRouteTable
-
-  PublicSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet2
-      RouteTableId: !Ref PublicRouteTable
-
-  ## NAT GATEWAY
-  NatGateway:
-    Type: AWS::EC2::NatGateway
-    DependsOn: NatPublicIP
-    Properties:
-      SubnetId: !Ref PublicSubnet1
-      AllocationId: !GetAtt NatPublicIP.AllocationId
-      Tags:
-        - Key: Name
-          Value: asgg-nat
-
-  ## ELASTIC IP
-  NatPublicIP:
-    Type: AWS::EC2::EIP
-    DependsOn: VPC
-    Properties:
-      Domain: vpc
-
-  ## PRIVATE ROUTING
-  PrivateRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: private-rt
-
-  PrivateRoute:
-    Type: AWS::EC2::Route
-    Properties:
-      #NatGatewayId: !Ref NatGateway
-      RouteTableId: !Ref PrivateRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGateway
-
-  PrivateSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet1
-      RouteTableId: !Ref PrivateRouteTable
-
-  PrivateSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet2
-      RouteTableId: !Ref PrivateRouteTable
-  
-  ## Cluster
+ 
+ 
+ 
+Resources:  
   Cluster:
     Type: AWS::ECS::Cluster
     Properties:
       ClusterName: !Join ['', [!Ref ServiceName, Cluster]]
   
   ## Task Definition
-  TaskDefinition:
-    AppName: !Ref AppName
+  TaskDefinition1:
     Type: AWS::ECS::TaskDefinition
     
     DependsOn: LogGroup
     Properties:
       # Name of the task definition.
-      Family: !Join ['', [!Ref ServiceName, TaskDefinition]]
+      Family: !Join ['', [!Ref ServiceName, TaskDefinition1]]
      
       NetworkMode: awsvpc
       RequiresCompatibilities:
-        - FARGATE
-    
-      Cpu: !Ref Cpu
-      
-      Memory: !Ref Memory
-      # A role needed by ECS.
+        - FARGATE    
+      Cpu: 1024  
+      Memory: 2GB
       ExecutionRoleArn: !Ref ExecutionRole
       TaskRoleArn: !Ref TaskRole
       ContainerDefinitions:
         - Name: !Ref ServiceName
-          Image: !Ref Image
+          Image: !Ref Image1
+          Environment:
+            - Name: DB_ENDPOINT
+              Value: 
+                Fn::ImportValue: DBEndPoint
+
+            # - Name: MYSQL_PORT
+            #   Value: 3306
+
+            - Name: DB_NAME
+              Value: 
+                Fn::ImportValue: dbname
+
+            - Name: DB_USER
+              Value: 
+                Fn::ImportValue: dbusername
+
+            - Name: DB_PASS
+              Value: 
+                Fn::ImportValue: dbpassword
+
+            # - Name: MYSQL_ROOT_PASSWORD
+            #   Value: root@123
+              
           PortMappings:
             - ContainerPort: !Ref ContainerPort
+
           # CloudWatch Logs
           LogConfiguration:
             LogDriver: awslogs
@@ -221,7 +91,8 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-group: !Ref LogGroup
               awslogs-stream-prefix: ecs
-  
+
+
   ## Role needed by ECS
   ExecutionRole:
     Type: AWS::IAM::Role
@@ -262,24 +133,35 @@ Resources:
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceAutoscaleRole'
 
+  
+
   ## Container Security Group
   ContainerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: !Join ['', [!Ref ServiceName, ContainerSecurityGroup]]
-      VpcId: !Ref VPC
+      VpcId: 
+        Fn::ImportValue: VPC                                                                   #############################3
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: !Ref ContainerPort
           ToPort: !Ref ContainerPort
           SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 0 ##########!Ref ContainerPort
+          ToPort: 65535 #############!Ref ContainerPort
+          CidrIp: 0.0.0.0/0
+          #SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+
+          
 
   ## LoadBalancer Security Group
   LoadBalancerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: !Join ['', [!Ref ServiceName, LoadBalancerSecurityGroup]]
-      VpcId: !Ref VPC
+      VpcId: 
+        Fn::ImportValue: VPC                                                                   ###################################
     
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -293,46 +175,55 @@ Resources:
     
     DependsOn:
       - ListenerHTTP
+
     Properties: 
       ServiceName: !Ref ServiceName
       Cluster: !Ref Cluster
-      TaskDefinition: !Ref TaskDefinition
+      TaskDefinition: !Ref TaskDefinition1
       DeploymentConfiguration:
         MinimumHealthyPercent: 100
         MaximumPercent: 200
       DesiredCount: 2
-      HealthCheckGracePeriodSeconds: 30
+      HealthCheckGracePeriodSeconds: 30         #
       LaunchType: FARGATE
       NetworkConfiguration: 
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
           Subnets:
-            - !Ref PrivateSubnet1  #private
-            - !Ref PrivateSubnet2
+            - Fn::ImportValue: PrivateSubnet1  #private                      ################################################
+            - Fn::ImportValue: PrivateSubnet2
           SecurityGroups:
             - !Ref ContainerSecurityGroup
       LoadBalancers:
         - ContainerName: !Ref ServiceName
           ContainerPort: !Ref ContainerPort
           TargetGroupArn: !Ref TargetGroup
+
+
+  
+
+            
   
   ## Target Group
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      HealthCheckIntervalSeconds: 30
+      HealthCheckIntervalSeconds: 40
       HealthCheckPath: !Ref HealthCheckPath
-      HealthCheckTimeoutSeconds: 20
+      HealthCheckTimeoutSeconds: 30
       UnhealthyThresholdCount: 2
       HealthyThresholdCount: 2
+      Matcher:
+        HttpCode: 200-499
       Name: !Join ['', [!Ref ServiceName, TargetGroup]]
-      Port: 80
+      Port: 8090
       Protocol: HTTP
       TargetGroupAttributes:
         - Key: deregistration_delay.timeout_seconds
           Value: 60 
       TargetType: ip
-      VpcId: !Ref VPC
+      VpcId: 
+        Fn::ImportValue: VPC                             ########################################################
   
   ListenerHTTP:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -361,8 +252,8 @@ Resources:
       SecurityGroups:
         - !Ref LoadBalancerSecurityGroup
       Subnets:
-        - !Ref PublicSubnet1   #public
-        - !Ref PublicSubnet2
+        - Fn::ImportValue: PublicSubnet1                                   #public  ###################################################################
+        - Fn::ImportValue: PublicSubnet2
   
   LogGroup:
     Type: AWS::Logs::LogGroup
@@ -392,3 +283,189 @@ Resources:
         ScaleInCooldown: 10
         ScaleOutCooldown: 10
         TargetValue: !Ref AutoScalingTargetValue
+
+
+  # EC2Instance:
+  #   Type: AWS::EC2::Instance
+  #   Properties:
+  #     InstanceType: 
+  #     SecurityGroups: !Ref InstanceSecurityGroup
+  #     KeyName: 
+  #     ImageId: 
+  # InstanceSecurityGroup:
+  #   Type: AWS::EC2::SecurityGroup
+  #   Properties:
+  #     GroupDescription: Enable SSH access via port 22
+  #     SecurityGroupIngress:
+  #     - IpProtocol: tcp
+  #       FromPort: 22
+  #       ToPort: 22
+  #       CidrIp: 0.0.0.0/0
+  #     - IpProtocol: tcp
+  #       FromPort: 0
+  #       ToPort: 65535
+  #       CidrIp: 0.0.0.0/0
+
+
+
+
+################################################################################################
+################################################################################################
+################################################################################################
+
+
+#  ## LoadBalancer Security Group
+#   LoadBalancerSecurityGroup2:
+#     Type: AWS::EC2::SecurityGroup
+#     Properties:
+#       GroupDescription: mysql
+#       VpcId: 
+#         Fn::ImportValue: VPC                                                                   ###################################
+    
+#       SecurityGroupIngress:
+#         - IpProtocol: tcp
+#           FromPort: 0
+#           ToPort: 65535
+#           CidrIp: 0.0.0.0/0
+
+#   ## Container Security Group
+#   ContainerSecurityGroup2:
+#     Type: AWS::EC2::SecurityGroup
+#     Properties:
+#       GroupDescription: mysql
+#       VpcId: 
+#         Fn::ImportValue: VPC                                                                   #############################3
+#       SecurityGroupIngress:
+#         - IpProtocol: tcp
+#           FromPort: 3306 #!Ref ContainerPort
+#           ToPort: 3306 #!Ref ContainerPort
+#           SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup2
+#         - IpProtocol: tcp
+#           FromPort: 0 ##########!Ref ContainerPort
+#           ToPort: 65535 #############!Ref ContainerPort
+#           CidrIp: 0.0.0.0/0
+#           #SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+
+
+
+#   ## Target Group
+#   TargetGroup2:
+#     Type: AWS::ElasticLoadBalancingV2::TargetGroup
+#     Properties:
+#       HealthCheckIntervalSeconds: 40
+#       HealthCheckPath: !Ref HealthCheckPath
+#       HealthCheckTimeoutSeconds: 30
+#       UnhealthyThresholdCount: 2
+#       HealthyThresholdCount: 2
+#       Name: mysql
+#       Port: 80
+#       Protocol: HTTP
+#       TargetGroupAttributes:
+#         - Key: deregistration_delay.timeout_seconds
+#           Value: 60 
+#       TargetType: ip
+#       VpcId: 
+#         Fn::ImportValue: VPC                             ########################################################
+  
+#   ListenerHTTP2:
+#     Type: AWS::ElasticLoadBalancingV2::Listener
+#     Properties:
+#       DefaultActions:
+#         - TargetGroupArn: !Ref TargetGroup2
+#           Type: forward
+#       LoadBalancerArn: !Ref LoadBalancer2
+#       Port: !Ref LoadBalancerPort
+#       Protocol: HTTP
+
+
+# ## Load Balancer for mysql
+#   LoadBalancer2:
+#     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+#     Properties:
+#       LoadBalancerAttributes:
+#         - Key: idle_timeout.timeout_seconds
+#           Value: 60
+#       Name: mysql
+#       # "internal" is also an option
+#       Scheme: internal
+#       SecurityGroups:
+#         - !Ref LoadBalancerSecurityGroup2
+#       Subnets:
+#         - Fn::ImportValue: PrivateSubnet1                                   #public  ###################################################################
+#         - Fn::ImportValue: PrivateSubnet2
+
+# # ##Taskfenition for Mysql
+#   TaskDefinitionmysql:
+#     Type: AWS::ECS::TaskDefinition
+    
+#     DependsOn: LogGroup2
+#     Properties:
+#       # Name of the task definition.
+#       Family: !Join ['', [!Ref ServiceName, TaskDefinitionmysql]]
+     
+#       NetworkMode: awsvpc
+#       RequiresCompatibilities:
+#         - FARGATE
+    
+#       Cpu: 1024
+#       Memory: 2GB
+# # A role needed by ECS.
+#       ExecutionRoleArn: !Ref ExecutionRole
+#       TaskRoleArn: !Ref TaskRole
+#       ContainerDefinitions:
+#         - Name: mysqll
+#           Image: 450852217355.dkr.ecr.us-east-1.amazonaws.com/mysqll:latest
+          
+#           Environment:
+#             - Name: MYSQL_DATABASE
+#               Value: bootexample
+
+#             - Name: MYSQL_USER
+#               Value: spring
+
+#             - Name: MYSQL_PASSWORD
+#               Value: spring@123
+
+#             - Name: MYSQL_ROOT_PASSWORD
+#               Value: root@123
+#           PortMappings:
+#             - ContainerPort: 3306
+#           # CloudWatch Logs
+#           LogConfiguration:
+#             LogDriver: awslogs
+#             Options:
+#               awslogs-region: !Ref AWS::Region
+#               awslogs-group: !Ref LogGroup2
+#               awslogs-stream-prefix: ecs
+#   service12:
+#     Type: AWS::ECS::Service
+    
+#     DependsOn:
+#       - ListenerHTTP2
+#     Properties: 
+#       ServiceName: mysql
+#       Cluster: !Ref Cluster
+#       TaskDefinition: !Ref TaskDefinitionmysql
+    
+#       DeploymentConfiguration:
+#         MinimumHealthyPercent: 100
+#         MaximumPercent: 200
+#       DesiredCount: 2
+#       # HealthCheckGracePeriodSeconds: 30
+#       LaunchType: FARGATE
+#       NetworkConfiguration: 
+#         AwsvpcConfiguration:
+#           AssignPublicIp: DISABLED
+#           Subnets:
+#             - Fn::ImportValue: PrivateSubnet1  #private
+#             - Fn::ImportValue: PrivateSubnet2
+#           SecurityGroups:
+#             - !Ref ContainerSecurityGroup2
+#       LoadBalancers:
+#         - ContainerName: mysqll
+#           ContainerPort: 3306
+#           TargetGroupArn: !Ref TargetGroup2
+#   LogGroup2:
+#     Type: AWS::Logs::LogGroup
+#     Properties:
+#       LogGroupName: mysql
