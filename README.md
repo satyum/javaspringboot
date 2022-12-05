@@ -1,5 +1,5 @@
 # A custom Cloud Template Generator in python and a demo to use the tool
- Python code for [Template generator](https://pages.github.com/)
+ Python code for [Template generator](https://github.com/satyum/javaspringboot/blob/master/templ.py)
  
  ## Feature
  
