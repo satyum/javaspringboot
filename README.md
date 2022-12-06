@@ -1,4 +1,4 @@
-# A custom Cloud Template Generator in python and java spring ene to end deployment
+# A custom Cloud Template Generator in python and java spring end to end deployment
 ![alt text](https://www.python.org/static/img/python-logo.png)
 
 
@@ -64,7 +64,12 @@ pipeline {
 }
 ```
 ## deploy network and rds for any application using network and rds template in templates folder
+Network cloudformation template [network Template](https://github.com/satyum/javaspringboot/blob/master/templates/rds.yml)
+rds cloudformation template [rds Template](https://github.com/satyum/javaspringboot/blob/master/templates/vpc.yml)
 
 ## Note : 
 * you can change username and password of application from application.yml
+
+![sring_config](https://github.com/satyum/javaspringboot/blob/master/pictures/conf.png)
+
 * Check loadbalancer for hiting spring app api
