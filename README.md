@@ -64,12 +64,37 @@ pipeline {
 }
 ```
 ## deploy network and rds for any application using network and rds template in templates folder
-Network cloudformation template [network Template](https://github.com/satyum/javaspringboot/blob/master/templates/rds.yml)
-rds cloudformation template [rds Template](https://github.com/satyum/javaspringboot/blob/master/templates/vpc.yml)
+* Network cloudformation template [network Template](https://github.com/satyum/javaspringboot/blob/master/templates/rds.yml)
+* rds cloudformation template [rds Template](https://github.com/satyum/javaspringboot/blob/master/templates/vpc.yml)
 
 ## Note : 
 * you can change username and password of application from application.yml
 
 ![sring_config](https://github.com/satyum/javaspringboot/blob/master/pictures/conf.png)
 
-* Check loadbalancer for hiting spring app api
+## deploy the pipeline for ecs service
+```groovy
+pipeline {
+    agent any
+     stages {
+        stage('Git checkout1') {
+          steps{
+                git branch: 'master', credentialsId: '', url: 'https://github.com/satyum/javaspringboot.git'
+                sh'ls -lat'
+            }
+        }
+
+        
+        stage('validation') {
+          steps{
+              sh 'python3 templ.py ecs.yml'
+              sh 'cat output/ecs.yml'
+              sh'aws cloudformation  validate-template --template-body file://output/ecs.yml'              
+            }
+        }
+               
+    }
+}
+```
+## Check loadbalancer for hiting spring app api
+* Add /swagger-ui.html at the end of the dns to hit the main url
