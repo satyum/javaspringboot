@@ -9,7 +9,24 @@
  * Detect templates according to the parameter file automatically
  * For example : sns-param.yml will automatically detect and generate the sns template
 
-## Things needed to be installed in jenkins server
+
+## Note : 
+* you can change username and password of springboot application from application.yml before deploying the image
+
+![sring_config](https://github.com/satyum/javaspringboot/blob/master/pictures/conf.png)
+
+## deploying Image by building and pushing it to ecr in jenkins
+```
+* docker build -t awsaccountnumber.dkr.ecr.us-east-1.amazonaws.com/spring:latest . 
+* aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 6xxxxxxxxx2.dkr.ecr.us-east-1.amazonaws.com'
+* docker push awsaccountnumber.dkr.ecr.us-east-1.amazonaws.com/spring:latest'
+```
+## deploy network and rds for any application using network and rds template in templates folder
+* Network cloudformation template [network Template](https://github.com/satyum/javaspringboot/blob/master/templates/rds.yml)
+* rds cloudformation template [rds Template](https://github.com/satyum/javaspringboot/blob/master/templates/vpc.yml)
+
+
+## Now things needed to be installed in jenkins server
 
 * python 
 * pip (for installing requirement.txt)
@@ -19,7 +36,10 @@
 
 ``` pip install -r requirements.txt```
 
-## Parameters for ecs template 
+# ecs custom parameter template to auto-populate the ecs service file by using python script mentioned above
+*  ecs custom parameter template [ecs Template](https://github.com/satyum/javaspringboot/blob/master/parameters/ecs.yml)
+
+## Parameters for ecs template passing through custom parameter file
 * Image
 * ServiceName
 * ContainerPort
@@ -27,50 +47,6 @@
 * HealthCheckPath
 * MinContainers
 * MaxContainers
-
-## deploying Image by building and pushing it to ecr in jenkins
-```
-pipeline {
-    agent any
-     stages {
-        stage('Git checkout1') {
-          steps{
-                git branch: 'master', credentialsId: '', url: 'https://github.com/satyum/javaspringboot.git'
-            }
-        }
-         stage('build image') {
-          steps{
-              sh'docker build -t 607966531582.dkr.ecr.us-east-1.amazonaws.com/spring:${BUILD_NUMBER} . '
-                }
-        }
-        stage('push image') {
-          steps{
-             sh'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 607966531582.dkr.ecr.us-east-1.amazonaws.com'
-             sh'docker push 607966531582.dkr.ecr.us-east-1.amazonaws.com/spring:${BUILD_NUMBER}'
-                }
-        }  
-        stage('validation') {
-          steps{
-              sh 'python3 templ.py ecs.yml'
-              sh'aws cloudformation validate-template --template-body file://output/ecs.yml'              
-            }
-        }
-        stage('submit stack') {
-          steps{               
-              sh'aws cloudformation create-stack --stack-name ecs --template-body file://output/ecs.yml --parameters ParameterKey=Image1,ParameterValue=${image}:${BUILD_NUMBER} --capabilities CAPABILITY_NAMED_IAM'
-            }
-        }                
-    }
-}
-```
-## deploy network and rds for any application using network and rds template in templates folder
-* Network cloudformation template [network Template](https://github.com/satyum/javaspringboot/blob/master/templates/rds.yml)
-* rds cloudformation template [rds Template](https://github.com/satyum/javaspringboot/blob/master/templates/vpc.yml)
-
-## Note : 
-* you can change username and password of application from application.yml
-
-![sring_config](https://github.com/satyum/javaspringboot/blob/master/pictures/conf.png)
 
 ## deploy the pipeline for ecs service
 ```groovy
