@@ -57,7 +57,7 @@ Resources:
       TaskRoleArn: !Ref TaskRole
       ContainerDefinitions:
         - Name: !Ref ServiceName
-          Image: !Ref Image1
+          Image: !Ref ImageUri
           Environment:
             - Name: DB_ENDPOINT
               Value: 
