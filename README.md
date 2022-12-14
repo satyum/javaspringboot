@@ -23,8 +23,8 @@
 * docker push awsaccountnumber.dkr.ecr.us-east-1.amazonaws.com/springboot:latest
 ```
 ## deploy network and rds for any application using network and rds template in templates folder
-* Network cloudformation template [network Template](https://github.com/satyum/javaspringboot/blob/master/templates/rds.yml)
-* rds cloudformation template [rds Template](https://github.com/satyum/javaspringboot/blob/master/templates/vpc.yml)
+* Network cloudformation template [network Template](https://github.com/satyum/javaspringboot/blob/master/templates/vpc.yml)
+* rds cloudformation template [rds Template](https://github.com/satyum/javaspringboot/blob/master/templates/rds.yml)
 
 
 ## Now things needed to be installed in jenkins server
