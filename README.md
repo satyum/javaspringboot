@@ -17,10 +17,10 @@
 
 ## deploying Image by building and pushing it to ecr in jenkins
 ```
-* docker build -t awsaccountnumber.dkr.ecr.us-east-1.amazonaws.com/spring:latest . 
+* docker build -t awsaccountnumber.dkr.ecr.us-east-1.amazonaws.com/springboot:latest . 
 * aws ecr create-repository --repository-name springboot --region us-east-1
 * aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 6xxxxxxxxx2.dkr.ecr.us-east-1.amazonaws.com
-* docker push awsaccountnumber.dkr.ecr.us-east-1.amazonaws.com/spring:latest
+* docker push awsaccountnumber.dkr.ecr.us-east-1.amazonaws.com/springboot:latest
 ```
 ## deploy network and rds for any application using network and rds template in templates folder
 * Network cloudformation template [network Template](https://github.com/satyum/javaspringboot/blob/master/templates/rds.yml)
