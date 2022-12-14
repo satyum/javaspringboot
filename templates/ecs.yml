@@ -1,13 +1,12 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: An example CloudFormation template for Fargate.
 Parameters:
-  
-  ImageUri:
+  Imageuri:
     Type: String
     Default: {{ ecs.Image }}
   ServiceName:
     Type: String
-    Default: {{ ecs.ServiceName}}
+    Default: {{ ecs.ServiceName }}
   ContainerPort:
     Type: Number
     Default: {{ ecs.ContainerPort }}
@@ -26,14 +25,16 @@ Parameters:
   MaxContainers:
     Type: Number
     Default: {{ ecs.MaxContainers }}
-
+  # target CPU utilization (%)
   AutoScalingTargetValue:
     Type: Number
     Default: 50
  
  
  
-Resources:  
+Resources:
+  
+  ## Cluster
   Cluster:
     Type: AWS::ECS::Cluster
     Properties:
@@ -57,7 +58,7 @@ Resources:
       TaskRoleArn: !Ref TaskRole
       ContainerDefinitions:
         - Name: !Ref ServiceName
-          Image: !Ref ImageUri
+          Image: !Ref Imageuri
           Environment:
             - Name: DB_ENDPOINT
               Value: 
@@ -67,13 +68,16 @@ Resources:
             #   Value: 3306
 
             - Name: DB_NAME
-              Value: bootexample
+              Value: 
+                Fn::ImportValue: dbname
 
             - Name: DB_USER
-              Value: spring
-              
+              Value: 
+                Fn::ImportValue: dbusername
+
             - Name: DB_PASS
-              Value: spring123
+              Value: 
+                Fn::ImportValue: dbpassword
 
             # - Name: MYSQL_ROOT_PASSWORD
             #   Value: root@123
@@ -280,4 +284,5 @@ Resources:
         ScaleInCooldown: 10
         ScaleOutCooldown: 10
         TargetValue: !Ref AutoScalingTargetValue
+
 
