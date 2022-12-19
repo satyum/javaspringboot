@@ -1,4 +1,4 @@
-# A custom Cloud Template Generator in python and java spring end to end deployment
+#  Java springboot and rds end to end deployment
 
 
 ## deploying Image by building and pushing it to ecr 
@@ -95,49 +95,5 @@ aws cloudformation create-stack --stack-name ecs --template-body file://ecs.yml 
 ![mainroute](https://github.com/satyum/javaspringboot/blob/master/pictures/Screenshot%20from%202022-12-19%2012-33-28.png)
 
 
-
-
-
-
-## install all the required packages 
-
-``` pip install -r requirements.txt```
-
-# ecs custom parameter template to auto-populate the ecs service file by using python script mentioned above
-*  ecs custom parameter template [ecs Template](https://github.com/satyum/javaspringboot/blob/master/parameters/ecs.yml)
-
-## Parameters for ecs template passing through custom parameter file
-* Image
-* ServiceName
-* ContainerPort
-* LoadBalancerPort
-* HealthCheckPath
-* MinContainers
-* MaxContainers
-
-## deploy the pipeline for ecs service
-```groovy
-pipeline {
-    agent any
-     stages {
-        stage('Git checkout1') {
-          steps{
-                git branch: 'master', credentialsId: '', url: 'https://github.com/satyum/javaspringboot.git'
-                sh'ls -lat'
-            }
-        }
-
-        
-        stage('validation') {
-          steps{
-              sh 'python3 templ.py ecs.yml'
-              sh 'cat output/ecs.yml'
-              sh'aws cloudformation  validate-template --template-body file://output/ecs.yml'              
-            }
-        }
-               
-    }
-}
-```
 
 ___________________________________________________________________________________________________________________________________
