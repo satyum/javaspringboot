@@ -80,11 +80,11 @@ aws cloudformation create-stack --stack-name ecs --template-body file://ecs.yml 
 * Add /swagger-ui.html at the end of the dns to hit the main url
 
 
-![image](https://user-images.githubusercontent.com/54767390/208317697-1b7a81c5-de64-4a49-97d4-98839d87421a.png)
+![dns](https://github.com/satyum/javaspringboot/blob/master/pictures/Screenshot%20from%202022-12-19%2012-33-28.png)
 
 
 
-![image](https://user-images.githubusercontent.com/54767390/208317833-808b591f-1c2c-4adf-b57e-729a6af953ba.png)
+![mainroute](https://github.com/satyum/javaspringboot/blob/master/pictures/Screenshot%20from%202022-12-19%2012-33-28.png)
 
 
 
