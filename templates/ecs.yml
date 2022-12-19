@@ -1,4 +1,3 @@
-
 AWSTemplateFormatVersion: '2010-09-09'
 Description: EC2 ECS cluster running containers in a public subnet. Only supports
              public facing load balancer, and public service discovery namespaces.
@@ -11,43 +10,42 @@ Parameters:
   
   ClusterName:
     Type: String
-    Default: myspringcluster
-  
+    Default: Springcluster
 
   DesiredCapacity:
     Type: Number
     Default: 1
-    Description: Number of EC2 instances to launch in your ECS cluster.
+    Description: Number of EC2 instances to launch 
   MaxSize:
     Type: Number
     Default: 2
-    Description: Maximum number of EC2 instances that can be launched in your ECS cluster.
+    Description: Maximum number of EC2 instances 
   ECSAMI:
     Description: AMI ID
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
-    Description: The Amazon Machine Image ID used for the cluster, leave it as the default value to get the latest AMI
+    Description: The Amazon Machine Image ID used for the cluster,
 
   ServiceName:
     Type: String
     Description: A human-readable name for the service.
-    Default: springbootServiceEcs
+    Default: springService
   HealthCheckPath:
     Type: String
     Default: /swagger-ui.html
     Description: Path to perform the healthcheck on each instance.
   HealthCheckIntervalSeconds:
     Type: Number
-    Default: 20
+    Default: 15
     Description: Number of seconds to wait between each health check.
   ImageUrl:
     Type: String
     Description: The url of a docker image that will handle incoming traffic.
-    Default: '607966531582.dkr.ecr.ap-south-1.amazonaws.com/newspring:latest'
+    Default: 555305526508.dkr.ecr.us-east-1.amazonaws.com/spring-boot:6
   
-  HostPort:
-    Type: Number
-    Default: 0
+  # HostPort:
+  #   Type: Number
+  #   Default: 0
     
   ContainerPort:
     Type: Number
@@ -84,12 +82,9 @@ Resources:
     Properties:
       ClusterName: !Ref ClusterName
 
-  # A security group for the EC2 hosts that will run the containers
-  # ContainerSecurityGroup:
-  #   Type: AWS::EC2::SecurityGroup
-  #   Properties:
-  #     GroupDescription: Access to the ECS hosts that run containers
-  #     VpcId: !Ref 'VPC'
+
+
+
 
   ECSSecurityGroupIngressFromPublicALB:
     Type: AWS::EC2::SecurityGroupIngress
@@ -103,11 +98,12 @@ Resources:
       ToPort: 65535
       SourceSecurityGroupId: !Ref 'PublicLoadBalancerSecurityGroup'
 
+
   ECSAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier:
-        - Fn::ImportValue: PrivateSubnet1                 
+        - Fn::ImportValue: PrivateSubnet1  #private                 
         - Fn::ImportValue: PrivateSubnet2
       LaunchConfigurationName: !Ref ContainerInstances
       MinSize: 1
@@ -123,9 +119,8 @@ Resources:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
       ImageId: !Ref 'ECSAMI'
-      SecurityGroups:
-        - Fn::ImportValue: ECSSecurityGroup
-      # SecurityGroups: [!Ref 'ContainerSecurityGroup']
+      SecurityGroups: 
+        - Fn::ImportValue: ECSSecurityGroup                           ##########
       InstanceType: !Ref 'InstanceType'
       IamInstanceProfile: !Ref 'EC2InstanceProfile'
       UserData:
@@ -163,23 +158,7 @@ Resources:
               - 'ecs:UpdateService'
             Resource: '*'
 
-  ServiceScalableTarget:
-    Type: "AWS::ApplicationAutoScaling::ScalableTarget"
-    Properties:
-      MaxCapacity:  2
-      MinCapacity:  1
-      ResourceId: !Join
-        - /
-        - - service
-          - !Ref ClusterName
-          - !GetAtt Service.Name
-      RoleARN: !GetAtt AutoscalingRole.Arn
-      ScalableDimension: ecs:service:DesiredCount
-      ServiceNamespace: ecs
 
-  # Role for the EC2 hosts. This allows the ECS agent on the EC2 hosts
-  # to communciate with the ECS control plane, as well as download the docker
-  # images from ECR to run on your host.
   EC2Role:
     Type: AWS::IAM::Role
     Properties:
@@ -210,10 +189,7 @@ Resources:
               - 'ecr:GetDownloadUrlForLayer'
             Resource: '*'
 
-  # This is an IAM role which authorizes ECS to manage resources on your
-  # account on your behalf, such as updating your load balancer with the
-  # details of where your containers are, so that traffic can reach your
-  # containers.
+
   ECSRole:
     Type: AWS::IAM::Role
     Properties:
@@ -230,8 +206,7 @@ Resources:
           Statement:
           - Effect: Allow
             Action:
-              # Rules which allow ECS to attach network interfaces to instances
-              # on your behalf in order for awsvpc networking mode to work right
+       
               - 'ec2:AttachNetworkInterface'
               - 'ec2:CreateNetworkInterface'
               - 'ec2:CreateNetworkInterfacePermission'
@@ -240,8 +215,7 @@ Resources:
               - 'ec2:Describe*'
               - 'ec2:DetachNetworkInterface'
 
-              # Rules which allow ECS to update load balancers on your behalf
-              # with the information sabout how to send traffic to your containers
+             
               - 'elasticloadbalancing:DeregisterInstancesFromLoadBalancer'
               - 'elasticloadbalancing:DeregisterTargets'
               - 'elasticloadbalancing:Describe*'
@@ -257,14 +231,12 @@ Resources:
       HealthCheckIntervalSeconds: !Ref 'HealthCheckIntervalSeconds'
       HealthCheckPath: !Ref 'HealthCheckPath'
       HealthCheckProtocol: HTTP
-      Protocol: HTTP
-      Matcher:
-        HttpCode: 200-299
-      HealthCheckTimeoutSeconds: 5
+     # HealthCheckTimeoutSeconds: 
       HealthyThresholdCount: 2
-      #TargetType: instance
+     # TargetType: instance
       Name: !Ref 'ServiceName'
-      Port: 80
+      Port: !Ref ContainerPort
+      Protocol: HTTP
       UnhealthyThresholdCount: 2
       VpcId: 
         Fn::ImportValue: VPC
@@ -274,7 +246,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Access to the public facing load balancer
-      VpcId: 
+      VpcId:
         Fn::ImportValue: VPC
       SecurityGroupIngress:
         # Allow access to ALB from anywhere on the internet
@@ -286,8 +258,8 @@ Resources:
     Properties:
       Scheme: internet-facing
       Subnets:
-        - Fn::ImportValue: PrivateSubnet1                   
-        - Fn::ImportValue: PrivateSubnet2
+        - Fn::ImportValue: PublicSubnet1                                   #public  ###################################################################
+        - Fn::ImportValue: PublicSubnet2
       SecurityGroups:
         - !Ref PublicLoadBalancerSecurityGroup
     
@@ -327,13 +299,13 @@ Resources:
                   - 'ecr:BatchCheckLayerAvailability'
                   - 'ecr:GetDownloadUrlForLayer'
                   - 'ecr:BatchGetImage'
-                  - 'ssm:GetParameters'
-                  - 'secretsmanager:GetSecretValue'
 
                   # Allow the ECS tasks to upload logs to CloudWatch
                   - 'logs:CreateLogStream'
                   - 'logs:PutLogEvents'
                 Resource: '*'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonSSMFullAccess'
 
   LogGroup:
     Type: AWS::Logs::LogGroup
@@ -360,19 +332,17 @@ Resources:
               
             - Name: DB_NAME
               ValueFrom: !Sub arn:aws:ssm:us-east-1:${AWS::AccountId}:parameter/dbname
-              
 
             - Name: DB_USER
               ValueFrom: !Sub arn:aws:ssm:us-east-1:${AWS::AccountId}:parameter/dbusername
-              
 
             - Name: DB_PASS
               ValueFrom: !Sub arn:aws:ssm:us-east-1:${AWS::AccountId}:parameter/dbpassword
-              
-              
+
           PortMappings:
             - ContainerPort: !Ref ContainerPort
-              HostPort: !Ref HostPort
+              # HostPort: !Ref HostPort
+
           LogConfiguration:
             LogDriver: 'awslogs'
             Options:
@@ -414,4 +384,3 @@ Outputs:
 
 
   
-
