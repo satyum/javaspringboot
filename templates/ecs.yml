@@ -107,8 +107,8 @@ Resources:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier:
-        - !Ref PrivateSubnetOne
-        - !Ref PrivateSubnetTwo
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
       LaunchConfigurationName: !Ref ContainerInstances
       MinSize: 1
       MaxSize: !Ref MaxSize
