@@ -2,7 +2,7 @@ template: 'ecs'
 description: 'Deploys ecs using fargate'
 appName: 'app1'
 ecs:
-  Image: 450852217355.dkr.ecr.us-east-1.amazonaws.com/spring:latest
+  Image: 607966531582.dkr.ecr.ap-south-1.amazonaws.com/newspring:latest
   ServiceName: MyService
   ContainerPort: 8090
   LoadBalancerPort: 80

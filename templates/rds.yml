@@ -1,5 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: An example CloudFormation template for Fargate.
+<<<<<<< HEAD
 Parameters:
   RandomStringLength:
     Type: Number
@@ -28,6 +29,9 @@ Parameters:
   #   Description: RDS database Password
   #   Type: AWS::SSM::Parameter::Value<String>
   #   Default: dbpassword
+=======
+# Parameters:
+>>>>>>> faafb5266bc0f1e5a4df732b820ce3160ad6780a
 
 
 
@@ -156,10 +160,44 @@ Resources:
       MasterUserPassword: !GetAtt CallLambda.RandomString  
       DBName: db
     DeletionPolicy: Snapshot
+    
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the RDS instance
+      VpcId:
+        Fn::ImportValue: VPC
+      
+
+<<<<<<< HEAD
+=======
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the ECS containers
+      VpcId:
+        Fn::ImportValue: VPC
+
+  DBSecurityGroupIngressFromECS:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from the ECS containers to the RDS instance
+      GroupId: !Ref 'DBSecurityGroup'
+      IpProtocol: -1 
+      SourceSecurityGroupId: !Ref 'ECSSecurityGroup'
+
+#   DbSecurityByEC2SecurityGroup: 
+#     Type: AWS::RDS::DBSecurityGroup
+#     Properties: 
+      
+#       GroupDescription: "Ingress for Amazon EC2 security group"
+#       DBSecurityGroupIngress: 
+#           CIDRIP: 0.0.0.0/0
+>>>>>>> faafb5266bc0f1e5a4df732b820ce3160ad6780a
 
 
 
-
+ 
 
   SSMRole:
     Type: AWS::IAM::Role
