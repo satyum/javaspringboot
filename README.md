@@ -8,11 +8,11 @@
 Use this command to build the image where dockerfile is:
 * docker build -t 6xxxxxxxxx2.dkr.ecr.us-east-1.amazonaws.com/springboot:latest . 
 
-Create ecr repository
-* aws ecr create-repository --repository-name springboot --region us-east-1
-
 Get Login access for ecr for few hours to push image
 * aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 6xxxxxxxxx2.dkr.ecr.us-east-1.amazonaws.com
+
+Create ecr repository
+* aws ecr create-repository --repository-name springboot --region us-east-1
 
 push the image to the ecr
 * docker push 6xxxxxxxxx2.dkr.ecr.us-east-1.amazonaws.com/springboot:latest
