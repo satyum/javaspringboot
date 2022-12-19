@@ -13,21 +13,6 @@ Parameters:
     Type: String
     Default: myspringcluster
   
-  VPC:
-    Type: String
-    Default: vpc-0eaee52251287de2d
-  PrivateSubnetOne: 
-    Type: String
-    Default: subnet-02971cfdf444fc414
-  PrivateSubnetTwo: 
-    Type: String
-    Default: subnet-076e7e43baa241d67
-  PublicSubnetOne: 
-    Type: String
-    Default: subnet-0d96b5206fb2ac87d
-  PublicSubnetTwo: 
-    Type: String
-    Default: subnet-0169e25ab438e2976
 
   DesiredCapacity:
     Type: Number
@@ -281,14 +266,16 @@ Resources:
       Name: !Ref 'ServiceName'
       Port: 80
       UnhealthyThresholdCount: 2
-      VpcId: !Ref VPC
+      VpcId: 
+        Fn::ImportValue: VPC
 
 
   PublicLoadBalancerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Access to the public facing load balancer
-      VpcId: !Ref 'VPC'
+      VpcId: 
+        Fn::ImportValue: VPC
       SecurityGroupIngress:
         # Allow access to ALB from anywhere on the internet
         - CidrIp: 0.0.0.0/0
@@ -299,8 +286,8 @@ Resources:
     Properties:
       Scheme: internet-facing
       Subnets:
-        - !Ref PublicSubnetTwo
-        - !Ref PublicSubnetOne
+        - Fn::ImportValue: PrivateSubnet1                   
+        - Fn::ImportValue: PrivateSubnet2
       SecurityGroups:
         - !Ref PublicLoadBalancerSecurityGroup
     
