@@ -23,7 +23,7 @@ push the image to the ecr
 * ecs cloudformation template [ecs Template](https://raw.githubusercontent.com/satyum/javaspringboot/master/templates/ecs.yml)
  
  ## Note
-please change the parameter for dnsendpoint,database,database user and database password with your aws account number in  rds cloudformation template [rds Template](https://raw.githubusercontent.com/satyum/javaspringboot/master/templates/rds.yml)
+please change the parameter for dnsendpoint,database,database user and database password with your aws account number in  ecs cloudformation template [rds Template](https://raw.githubusercontent.com/satyum/javaspringboot/master/templates/ecs.yml)
 
 
 ### Steps For deploying on AWS ECS
