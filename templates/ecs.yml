@@ -356,18 +356,18 @@ Resources:
           Image: !Ref 'ImageUrl'
           Secrets:
             - Name: DB_ENDPOINT
-              ValueFrom: arn:aws:ssm:us-east-1:${AWS::AccountId}:parameter/dbendpoint
+              ValueFrom: !Sub arn:aws:ssm:us-east-1:${AWS::AccountId}:parameter/dbendpoint
               
             - Name: DB_NAME
-              ValueFrom: arn:aws:ssm:us-east-1:${AWS::AccountId}:parameter/dbname
+              ValueFrom: !Sub arn:aws:ssm:us-east-1:${AWS::AccountId}:parameter/dbname
               
 
             - Name: DB_USER
-              ValueFrom: arn:aws:ssm:us-east-1:${AWS::AccountId}:parameter/dbusername
+              ValueFrom: !Sub arn:aws:ssm:us-east-1:${AWS::AccountId}:parameter/dbusername
               
 
             - Name: DB_PASS
-              ValueFrom: arn:aws:ssm:us-east-1:${AWS::AccountId}:parameter/dbpassword
+              ValueFrom: !Sub arn:aws:ssm:us-east-1:${AWS::AccountId}:parameter/dbpassword
               
               
           PortMappings:
