@@ -1,40 +1,10 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: An example CloudFormation template for Fargate.
-<<<<<<< HEAD
+
 Parameters:
   RandomStringLength:
     Type: Number
     Default: 12
-  # VPC:
-  #   Type: String
-  #   Default: vpc-0eaee52251287de2d
-  # PrivateSubnetOne: 
-  #   Type: String
-  #   Default: subnet-02971cfdf444fc414
-  # PrivateSubnetTwo: 
-  #   Type: String
-  #   Default: subnet-076e7e43baa241d67
-
-  # DBName:
-  #   Description: RDS database name
-  #   Type: AWS::SSM::Parameter::Value<String>
-  #   Default: dbname
-
-  # DBUsername:
-  #   Description: RDS database user name
-  #   Type: AWS::SSM::Parameter::Value<String>
-  #   Default: dbusername
-
-  # DBPassword:
-  #   Description: RDS database Password
-  #   Type: AWS::SSM::Parameter::Value<String>
-  #   Default: dbpassword
-=======
-# Parameters:
->>>>>>> faafb5266bc0f1e5a4df732b820ce3160ad6780a
-
-
-
 
 
 Resources:
@@ -126,14 +96,6 @@ Resources:
       VpcId:
         Fn::ImportValue: VPC
 
-  # DBSecurityGroupIngressFromECS:
-  #   Type: AWS::EC2::SecurityGroupIngress
-  #   Properties:
-  #     DBSecurityGroupIngress:
-  #       EC2SecurityGroupName: !Ref 'ECSSecurityGroup'
-
-
-
 
   myDBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
@@ -156,7 +118,7 @@ Resources:
       AllocatedStorage: 5
       DBInstanceClass: db.t3.small
       Engine: MySQL
-      MasterUsername: !GetAtt CallLambda.UpperRandomString
+      MasterUsername: spring
       MasterUserPassword: !GetAtt CallLambda.RandomString  
       DBName: db
     DeletionPolicy: Snapshot
@@ -168,9 +130,6 @@ Resources:
       VpcId:
         Fn::ImportValue: VPC
       
-
-<<<<<<< HEAD
-=======
   ECSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -193,7 +152,7 @@ Resources:
 #       GroupDescription: "Ingress for Amazon EC2 security group"
 #       DBSecurityGroupIngress: 
 #           CIDRIP: 0.0.0.0/0
->>>>>>> faafb5266bc0f1e5a4df732b820ce3160ad6780a
+
 
 
 
@@ -227,7 +186,7 @@ Resources:
     Properties:
       Name: dbpassword
       Type: String
-      Value: !GetAtt CallLambda.RandomString                  ####################
+      Value: !GetAtt CallLambda.RandomString                  
       Tier: Standard
       Description: SSM Parameter 
 
