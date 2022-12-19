@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 AWSTemplateFormatVersion: '2010-09-09'
 Description: EC2 ECS cluster running containers in a public subnet. Only supports
              public facing load balancer, and public service discovery namespaces.
@@ -720,4 +720,3 @@ Resources:
         TargetValue: !Ref AutoScalingTargetValue
 
 
->>>>>>> faafb5266bc0f1e5a4df732b820ce3160ad6780a
