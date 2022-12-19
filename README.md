@@ -23,12 +23,13 @@ push the image to the ecr
 * ecs cloudformation template [ecs Template](https://raw.githubusercontent.com/satyum/javaspringboot/master/templates/ecs.yml)
  
  ## Note
-please change the parameter for dnsendpoint,database,database user and database password with your aws account number in  ecs cloudformation template [rds Template](https://raw.githubusercontent.com/satyum/javaspringboot/master/templates/ecs.yml)
+Please cd into templates folder before executing all the template
+
 
 
 ### Steps For deploying on AWS ECS
 
-Use Region <b>us-east-1</b> or you can change accordingly
+Use Region <b>us-east-1</b> or you can change accordingly  
 -----------------------------------------------------------------------------------------------------------------------------------------------
 ### Now run cloud formtion template for creating VPC
 ```
