@@ -63,8 +63,8 @@ spring:
   datasource:
     driverClassName: com.mysql.jdbc.Driver
     url: jdbc:mysql://localhost/bootexample?autoReconnect=true&useSSL=false
-    username: spring
-    password: spring123
+    username: xxxxxxxx
+    password: xxxxxxxx
 
   jpa:
     hibernate:

@@ -1,6 +1,0 @@
-Resources:
-  s3bUCKET:
-    Type: {{ s3Bucket.type }}
-    DeletionPolicy: {{ s3Bucket.deletionPolicy }}
-    Properties:
-      BucketName: {{ s3Bucket.bucketName }}

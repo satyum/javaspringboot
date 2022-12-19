@@ -1,471 +1,432 @@
-AWSTemplateFormatVersion: 2010-09-09
-Description: An example CloudFormation template for Fargate.
+AWSTemplateFormatVersion: '2010-09-09'
+Description: EC2 ECS cluster running containers in a public subnet. Only supports
+             public facing load balancer, and public service discovery namespaces.
 Parameters:
-  
-  ImageUri:
+  InstanceType:
+    Description: EC2 instance type
     Type: String
-    Default: {{ ecs.Image }}
+    Default: t2.micro
+    Description: EC2 instance used to host containers. 
+  
+  ClusterName:
+    Type: String
+    Default: myspringcluster
+  
+  VPC:
+    Type: String
+    Default: vpc-0eaee52251287de2d
+  PrivateSubnetOne: 
+    Type: String
+    Default: subnet-02971cfdf444fc414
+  PrivateSubnetTwo: 
+    Type: String
+    Default: subnet-076e7e43baa241d67
+  PublicSubnetOne: 
+    Type: String
+    Default: subnet-0d96b5206fb2ac87d
+  PublicSubnetTwo: 
+    Type: String
+    Default: subnet-0169e25ab438e2976
+
+  DesiredCapacity:
+    Type: Number
+    Default: 1
+    Description: Number of EC2 instances to launch in your ECS cluster.
+  MaxSize:
+    Type: Number
+    Default: 2
+    Description: Maximum number of EC2 instances that can be launched in your ECS cluster.
+  ECSAMI:
+    Description: AMI ID
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
+    Description: The Amazon Machine Image ID used for the cluster, leave it as the default value to get the latest AMI
+
   ServiceName:
     Type: String
-    Default: {{ ecs.ServiceName}}
-  ContainerPort:
-    Type: Number
-    Default: {{ ecs.ContainerPort }}
-
-  LoadBalancerPort:
-    Type: Number
-    Default: {{ ecs.LoadBalancerPort }}
+    Description: A human-readable name for the service.
+    Default: springbootServiceEcs
   HealthCheckPath:
     Type: String
-    Default: {{ ecs.HealthCheckPath }}
+    Default: /swagger-ui.html
+    Description: Path to perform the healthcheck on each instance.
+  HealthCheckIntervalSeconds:
+    Type: Number
+    Default: 20
+    Description: Number of seconds to wait between each health check.
+  ImageUrl:
+    Type: String
+    Description: The url of a docker image that will handle incoming traffic.
+    Default: '607966531582.dkr.ecr.ap-south-1.amazonaws.com/newspring:latest'
   
-  MinContainers:
+  HostPort:
     Type: Number
-    Default: {{ ecs.MinContainers }}
-  # for autoscaling
-  MaxContainers:
+    Default: 0
+    
+  ContainerPort:
     Type: Number
-    Default: {{ ecs.MaxContainers }}
+    Default: 8090
 
-  AutoScalingTargetValue:
+  ContainerCpu:
+    Type: Number
+    Default: 1024
+    Description: How much CPU to give the container. 1024 is 1 CPU.
+  ContainerMemory:
+    Type: Number
+    Default: 500
+    Description: How much memory in megabytes to give the container.
+  Path:
+    Type: String
+    Default: "*"
+    Description: A path on the public load balancer that this service
+      should be connected to.
+  DesiredCount:
+    Type: Number
+    Default: 1
+    Description: How many copies of the service task to run.
+  MinimumHealthyPercentage:
     Type: Number
     Default: 50
- 
- 
- 
-Resources:  
-  Cluster:
+  MaximumPercentage:
+    Type: Number
+    Default: 200
+
+Resources:
+  # ECS Resources
+  ECSCluster:
     Type: AWS::ECS::Cluster
     Properties:
-      ClusterName: !Join ['', [!Ref ServiceName, Cluster]]
-  
-  ## Task Definition
-  TaskDefinition1:
-    Type: AWS::ECS::TaskDefinition
-    
-    DependsOn: LogGroup
+      ClusterName: !Ref ClusterName
+
+  # A security group for the EC2 hosts that will run the containers
+  # ContainerSecurityGroup:
+  #   Type: AWS::EC2::SecurityGroup
+  #   Properties:
+  #     GroupDescription: Access to the ECS hosts that run containers
+  #     VpcId: !Ref 'VPC'
+
+  ECSSecurityGroupIngressFromPublicALB:
+    Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      # Name of the task definition.
-      Family: !Join ['', [!Ref ServiceName, TaskDefinition1]]
+      Description: Ingress from the public ALB
+      #GroupId: !Ref 'ContainerSecurityGroup'
+      GroupId: 
+        Fn::ImportValue: ECSSecurityGroup
+      IpProtocol: -1
+      FromPort: 1
+      ToPort: 65535
+      SourceSecurityGroupId: !Ref 'PublicLoadBalancerSecurityGroup'
+
+  ECSAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        - !Ref PrivateSubnetOne
+        - !Ref PrivateSubnetTwo
+      LaunchConfigurationName: !Ref ContainerInstances
+      MinSize: 1
+      MaxSize: !Ref MaxSize
+      DesiredCapacity: !Ref DesiredCapacity
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+    UpdatePolicy:
+      AutoScalingReplacingUpdate:
+        WillReplace: 'true'
+  ContainerInstances:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: !Ref 'ECSAMI'
+      SecurityGroups:
+        - Fn::ImportValue: ECSSecurityGroup
+      # SecurityGroups: [!Ref 'ContainerSecurityGroup']
+      InstanceType: !Ref 'InstanceType'
+      IamInstanceProfile: !Ref 'EC2InstanceProfile'
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
+          yum install -y aws-cfn-bootstrap
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource ECSAutoScalingGroup --region ${AWS::Region}
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles: [!Ref 'EC2Role']
+
+  AutoscalingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [application-autoscaling.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+      - PolicyName: service-autoscaling
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+              - 'application-autoscaling:*'
+              - 'cloudwatch:DescribeAlarms'
+              - 'cloudwatch:PutMetricAlarm'
+              - 'ecs:DescribeServices'
+              - 'ecs:UpdateService'
+            Resource: '*'
+
+  ServiceScalableTarget:
+    Type: "AWS::ApplicationAutoScaling::ScalableTarget"
+    Properties:
+      MaxCapacity:  2
+      MinCapacity:  1
+      ResourceId: !Join
+        - /
+        - - service
+          - !Ref ClusterName
+          - !GetAtt Service.Name
+      RoleARN: !GetAtt AutoscalingRole.Arn
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  # Role for the EC2 hosts. This allows the ECS agent on the EC2 hosts
+  # to communciate with the ECS control plane, as well as download the docker
+  # images from ECR to run on your host.
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ec2.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+      - PolicyName: ecs-service
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+              - 'ecs:CreateCluster'
+              - 'ecs:DeregisterContainerInstance'
+              - 'ecs:DiscoverPollEndpoint'
+              - 'ecs:Poll'
+              - 'ecs:RegisterContainerInstance'
+              - 'ecs:StartTelemetrySession'
+              - 'ecs:Submit*'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+              - 'ecr:GetAuthorizationToken'
+              - 'ecr:BatchGetImage'
+              - 'ecr:GetDownloadUrlForLayer'
+            Resource: '*'
+
+  # This is an IAM role which authorizes ECS to manage resources on your
+  # account on your behalf, such as updating your load balancer with the
+  # details of where your containers are, so that traffic can reach your
+  # containers.
+  ECSRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+      - PolicyName: ecs-service
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+              # Rules which allow ECS to attach network interfaces to instances
+              # on your behalf in order for awsvpc networking mode to work right
+              - 'ec2:AttachNetworkInterface'
+              - 'ec2:CreateNetworkInterface'
+              - 'ec2:CreateNetworkInterfacePermission'
+              - 'ec2:DeleteNetworkInterface'
+              - 'ec2:DeleteNetworkInterfacePermission'
+              - 'ec2:Describe*'
+              - 'ec2:DetachNetworkInterface'
+
+              # Rules which allow ECS to update load balancers on your behalf
+              # with the information sabout how to send traffic to your containers
+              - 'elasticloadbalancing:DeregisterInstancesFromLoadBalancer'
+              - 'elasticloadbalancing:DeregisterTargets'
+              - 'elasticloadbalancing:Describe*'
+              - 'elasticloadbalancing:RegisterInstancesWithLoadBalancer'
+              - 'elasticloadbalancing:RegisterTargets'
+            Resource: '*'
+
+
+#ecs service
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: !Ref 'HealthCheckIntervalSeconds'
+      HealthCheckPath: !Ref 'HealthCheckPath'
+      HealthCheckProtocol: HTTP
+      Protocol: HTTP
+      Matcher:
+        HttpCode: 200-299
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      #TargetType: instance
+      Name: !Ref 'ServiceName'
+      Port: 80
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref VPC
+
+
+  PublicLoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the public facing load balancer
+      VpcId: !Ref 'VPC'
+      SecurityGroupIngress:
+        # Allow access to ALB from anywhere on the internet
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+
+  PublicLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Subnets:
+        - !Ref PublicSubnetTwo
+        - !Ref PublicSubnetOne
+      SecurityGroups:
+        - !Ref PublicLoadBalancerSecurityGroup
+    
+      
+
+  PublicLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn:
+      - PublicLoadBalancer
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref TargetGroup
+          Type: 'forward'
+      LoadBalancerArn: !Ref PublicLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+##task def 
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [ecs-tasks.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+        - PolicyName: AmazonECSTaskExecutionRolePolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  # Allow the ECS Tasks to download images from ECR
+                  - 'ecr:GetAuthorizationToken'
+                  - 'ecr:BatchCheckLayerAvailability'
+                  - 'ecr:GetDownloadUrlForLayer'
+                  - 'ecr:BatchGetImage'
+                  - 'ssm:GetParameters'
+                  - 'secretsmanager:GetSecretValue'
+
+                  # Allow the ECS tasks to upload logs to CloudWatch
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: '*'
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Ref 'ServiceName'
+      RetentionInDays: 1
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref 'ServiceName'
+     # Cpu: 1vCPU
+      #Memory: 400
+      executionRoleArn: !Ref ECSTaskExecutionRole
      
-      NetworkMode: awsvpc
-      RequiresCompatibilities:
-        - FARGATE    
-      Cpu: 1024  
-      Memory: 2GB
-      ExecutionRoleArn: !Ref ExecutionRole
-      TaskRoleArn: !Ref TaskRole
       ContainerDefinitions:
-        - Name: !Ref ServiceName
-          Image: !Ref Image1
-          Environment:
+        - Name: !Ref 'ServiceName'
+         # Cpu: !Ref 'ContainerCpu'
+          Memory: !Ref 'ContainerMemory'
+          Image: !Ref 'ImageUrl'
+          Secrets:
             - Name: DB_ENDPOINT
-              Value: 
-                Fn::ImportValue: DBEndPoint
-
-            # - Name: MYSQL_PORT
-            #   Value: 3306
-
+              ValueFrom: arn:aws:ssm:us-east-1:607966531582:parameter/dbendpoint
+              
             - Name: DB_NAME
-              Value: 
-                Fn::ImportValue: dbname
+              ValueFrom: arn:aws:ssm:us-east-1:607966531582:parameter/dbname
+              
 
             - Name: DB_USER
-              Value: 
-                Fn::ImportValue: dbusername
+              ValueFrom: arn:aws:ssm:us-east-1:607966531582:parameter/dbusername
+              
 
             - Name: DB_PASS
-              Value: 
-                Fn::ImportValue: dbpassword
-
-            # - Name: MYSQL_ROOT_PASSWORD
-            #   Value: root@123
+              ValueFrom: arn:aws:ssm:us-east-1:607966531582:parameter/dbpassword
+              
               
           PortMappings:
             - ContainerPort: !Ref ContainerPort
-
-          # CloudWatch Logs
+              HostPort: !Ref HostPort
           LogConfiguration:
-            LogDriver: awslogs
+            LogDriver: 'awslogs'
             Options:
+              awslogs-group: !Ref 'ServiceName'
               awslogs-region: !Ref AWS::Region
-              awslogs-group: !Ref LogGroup
-              awslogs-stream-prefix: ecs
+              awslogs-stream-prefix: !Ref 'ServiceName'
 
 
-  ## Role needed by ECS
-  ExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Join ['', [!Ref ServiceName, ExecutionRole]]
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
-        
-  ## Role for the containers
-  TaskRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Join ['', [!Ref ServiceName, TaskRole]]
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: 'sts:AssumeRole'
-     
-  ## A Role needed for auto scaling
-  AutoScalingRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Join ['', [!Ref ServiceName, AutoScalingRole]]
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceAutoscaleRole'
-
-  
-
-  ## Container Security Group
-  ContainerSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: !Join ['', [!Ref ServiceName, ContainerSecurityGroup]]
-      VpcId: 
-        Fn::ImportValue: VPC                                                                   #############################3
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: !Ref ContainerPort
-          ToPort: !Ref ContainerPort
-          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
-        - IpProtocol: tcp
-          FromPort: 0 ##########!Ref ContainerPort
-          ToPort: 65535 #############!Ref ContainerPort
-          CidrIp: 0.0.0.0/0
-          #SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
-
-          
-
-  ## LoadBalancer Security Group
-  LoadBalancerSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: !Join ['', [!Ref ServiceName, LoadBalancerSecurityGroup]]
-      VpcId: 
-        Fn::ImportValue: VPC                                                                   ###################################
-    
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 0
-          ToPort: 65535
-          CidrIp: 0.0.0.0/0
-  
-  ## Service
   Service:
     Type: AWS::ECS::Service
-    
     DependsOn:
-      - ListenerHTTP
-
-    Properties: 
+      - "PublicLoadBalancerListener"
+    Properties:
       ServiceName: !Ref ServiceName
-      Cluster: !Ref Cluster
-      TaskDefinition: !Ref TaskDefinition1
+      Cluster: !Ref ClusterName
       DeploymentConfiguration:
-        MinimumHealthyPercent: 100
-        MaximumPercent: 200
-      DesiredCount: 2
-      HealthCheckGracePeriodSeconds: 30         #
-      LaunchType: FARGATE
-      NetworkConfiguration: 
-        AwsvpcConfiguration:
-          AssignPublicIp: DISABLED
-          Subnets:
-            - Fn::ImportValue: PrivateSubnet1  #private                      ################################################
-            - Fn::ImportValue: PrivateSubnet2
-          SecurityGroups:
-            - !Ref ContainerSecurityGroup
+        MaximumPercent: !Ref MaximumPercentage
+        MinimumHealthyPercent: !Ref MinimumHealthyPercentage
+      DesiredCount: !Ref DesiredCount
+      TaskDefinition: !Ref TaskDefinition
       LoadBalancers:
         - ContainerName: !Ref ServiceName
           ContainerPort: !Ref ContainerPort
           TargetGroupArn: !Ref TargetGroup
 
+Outputs:
+  ClusterName:
+    Description: The name of the ECS cluster
+    Value: !Ref 'ClusterName'
+    Export:
+      Name: !Ref ClusterName
 
-  
-
-            
-  
-  ## Target Group
-  TargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      HealthCheckIntervalSeconds: 40
-      HealthCheckPath: !Ref HealthCheckPath
-      HealthCheckTimeoutSeconds: 30
-      UnhealthyThresholdCount: 2
-      HealthyThresholdCount: 2
-      Matcher:
-        HttpCode: 200-499
-      Name: !Join ['', [!Ref ServiceName, TargetGroup]]
-      Port: 8090
-      Protocol: HTTP
-      TargetGroupAttributes:
-        - Key: deregistration_delay.timeout_seconds
-          Value: 60 
-      TargetType: ip
-      VpcId: 
-        Fn::ImportValue: VPC                             ########################################################
-  
-  ListenerHTTP:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      DefaultActions:
-        - TargetGroupArn: !Ref TargetGroup
-          Type: forward
-      LoadBalancerArn: !Ref LoadBalancer
-      Port: !Ref LoadBalancerPort
-      Protocol: HTTP
-
-    
-      # Certificates:
-      #   - CertificateArn: !Ref Certificate
-  
-  ## Load Balancer
-  LoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties:
-      LoadBalancerAttributes:
-        - Key: idle_timeout.timeout_seconds
-          Value: 60
-      Name: !Join ['', [!Ref ServiceName, LoadBalancer]]
-      # "internal" is also an option
-      Scheme: internet-facing
-      SecurityGroups:
-        - !Ref LoadBalancerSecurityGroup
-      Subnets:
-        - Fn::ImportValue: PublicSubnet1                                   #public  ###################################################################
-        - Fn::ImportValue: PublicSubnet2
-  
-  LogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Join ['', [/ecs/, !Ref ServiceName, TaskDefinition]]
-  
-  AutoScalingTarget:
-    Type: AWS::ApplicationAutoScaling::ScalableTarget
-    Properties:
-      MinCapacity: !Ref MinContainers
-      MaxCapacity: !Ref MaxContainers
-      ResourceId: !Join ['/', [service, !Ref Cluster, !GetAtt Service.Name]]
-      ScalableDimension: ecs:service:DesiredCount
-      ServiceNamespace: ecs
-      # AWS Identity and Access Management (IAM)
-      RoleARN: !GetAtt AutoScalingRole.Arn
- 
-  AutoScalingPolicy:
-    Type: AWS::ApplicationAutoScaling::ScalingPolicy
-    Properties:
-      PolicyName: !Join ['', [!Ref ServiceName, AutoScalingPolicy]]
-      PolicyType: TargetTrackingScaling
-      ScalingTargetId: !Ref AutoScalingTarget
-      TargetTrackingScalingPolicyConfiguration:
-        PredefinedMetricSpecification:
-          PredefinedMetricType: ECSServiceAverageCPUUtilization
-        ScaleInCooldown: 10
-        ScaleOutCooldown: 10
-        TargetValue: !Ref AutoScalingTargetValue
+  AutoscalingRole:
+    Description: The ARN of the role used for autoscaling
+    Value: !Ref 'AutoscalingRole'
+    Export:
+      Name: !Ref 
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'AutoscalingRole' ] ]
 
 
-  # EC2Instance:
-  #   Type: AWS::EC2::Instance
-  #   Properties:
-  #     InstanceType: 
-  #     SecurityGroups: !Ref InstanceSecurityGroup
-  #     KeyName: 
-  #     ImageId: 
-  # InstanceSecurityGroup:
-  #   Type: AWS::EC2::SecurityGroup
-  #   Properties:
-  #     GroupDescription: Enable SSH access via port 22
-  #     SecurityGroupIngress:
-  #     - IpProtocol: tcp
-  #       FromPort: 22
-  #       ToPort: 22
-  #       CidrIp: 0.0.0.0/0
-  #     - IpProtocol: tcp
-  #       FromPort: 0
-  #       ToPort: 65535
-  #       CidrIp: 0.0.0.0/0
-
-
-
-
-################################################################################################
-################################################################################################
-################################################################################################
-
-
-#  ## LoadBalancer Security Group
-#   LoadBalancerSecurityGroup2:
-#     Type: AWS::EC2::SecurityGroup
-#     Properties:
-#       GroupDescription: mysql
-#       VpcId: 
-#         Fn::ImportValue: VPC                                                                   ###################################
-    
-#       SecurityGroupIngress:
-#         - IpProtocol: tcp
-#           FromPort: 0
-#           ToPort: 65535
-#           CidrIp: 0.0.0.0/0
-
-#   ## Container Security Group
-#   ContainerSecurityGroup2:
-#     Type: AWS::EC2::SecurityGroup
-#     Properties:
-#       GroupDescription: mysql
-#       VpcId: 
-#         Fn::ImportValue: VPC                                                                   #############################3
-#       SecurityGroupIngress:
-#         - IpProtocol: tcp
-#           FromPort: 3306 #!Ref ContainerPort
-#           ToPort: 3306 #!Ref ContainerPort
-#           SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup2
-#         - IpProtocol: tcp
-#           FromPort: 0 ##########!Ref ContainerPort
-#           ToPort: 65535 #############!Ref ContainerPort
-#           CidrIp: 0.0.0.0/0
-#           #SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
-
-
-
-#   ## Target Group
-#   TargetGroup2:
-#     Type: AWS::ElasticLoadBalancingV2::TargetGroup
-#     Properties:
-#       HealthCheckIntervalSeconds: 40
-#       HealthCheckPath: !Ref HealthCheckPath
-#       HealthCheckTimeoutSeconds: 30
-#       UnhealthyThresholdCount: 2
-#       HealthyThresholdCount: 2
-#       Name: mysql
-#       Port: 80
-#       Protocol: HTTP
-#       TargetGroupAttributes:
-#         - Key: deregistration_delay.timeout_seconds
-#           Value: 60 
-#       TargetType: ip
-#       VpcId: 
-#         Fn::ImportValue: VPC                             ########################################################
-  
-#   ListenerHTTP2:
-#     Type: AWS::ElasticLoadBalancingV2::Listener
-#     Properties:
-#       DefaultActions:
-#         - TargetGroupArn: !Ref TargetGroup2
-#           Type: forward
-#       LoadBalancerArn: !Ref LoadBalancer2
-#       Port: !Ref LoadBalancerPort
-#       Protocol: HTTP
-
-
-# ## Load Balancer for mysql
-#   LoadBalancer2:
-#     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-#     Properties:
-#       LoadBalancerAttributes:
-#         - Key: idle_timeout.timeout_seconds
-#           Value: 60
-#       Name: mysql
-#       # "internal" is also an option
-#       Scheme: internal
-#       SecurityGroups:
-#         - !Ref LoadBalancerSecurityGroup2
-#       Subnets:
-#         - Fn::ImportValue: PrivateSubnet1                                   #public  ###################################################################
-#         - Fn::ImportValue: PrivateSubnet2
-
-# # ##Taskfenition for Mysql
-#   TaskDefinitionmysql:
-#     Type: AWS::ECS::TaskDefinition
-    
-#     DependsOn: LogGroup2
-#     Properties:
-#       # Name of the task definition.
-#       Family: !Join ['', [!Ref ServiceName, TaskDefinitionmysql]]
-     
-#       NetworkMode: awsvpc
-#       RequiresCompatibilities:
-#         - FARGATE
-    
-#       Cpu: 1024
-#       Memory: 2GB
-# # A role needed by ECS.
-#       ExecutionRoleArn: !Ref ExecutionRole
-#       TaskRoleArn: !Ref TaskRole
-#       ContainerDefinitions:
-#         - Name: mysqll
-#           Image: 450852217355.dkr.ecr.us-east-1.amazonaws.com/mysqll:latest
-          
-#           Environment:
-#             - Name: MYSQL_DATABASE
-#               Value: bootexample
-
-#             - Name: MYSQL_USER
-#               Value: spring
-
-#             - Name: MYSQL_PASSWORD
-#               Value: spring@123
-
-#             - Name: MYSQL_ROOT_PASSWORD
-#               Value: root@123
-#           PortMappings:
-#             - ContainerPort: 3306
-#           # CloudWatch Logs
-#           LogConfiguration:
-#             LogDriver: awslogs
-#             Options:
-#               awslogs-region: !Ref AWS::Region
-#               awslogs-group: !Ref LogGroup2
-#               awslogs-stream-prefix: ecs
-#   service12:
-#     Type: AWS::ECS::Service
-    
-#     DependsOn:
-#       - ListenerHTTP2
-#     Properties: 
-#       ServiceName: mysql
-#       Cluster: !Ref Cluster
-#       TaskDefinition: !Ref TaskDefinitionmysql
-    
-#       DeploymentConfiguration:
-#         MinimumHealthyPercent: 100
-#         MaximumPercent: 200
-#       DesiredCount: 2
-#       # HealthCheckGracePeriodSeconds: 30
-#       LaunchType: FARGATE
-#       NetworkConfiguration: 
-#         AwsvpcConfiguration:
-#           AssignPublicIp: DISABLED
-#           Subnets:
-#             - Fn::ImportValue: PrivateSubnet1  #private
-#             - Fn::ImportValue: PrivateSubnet2
-#           SecurityGroups:
-#             - !Ref ContainerSecurityGroup2
-#       LoadBalancers:
-#         - ContainerName: mysqll
-#           ContainerPort: 3306
-#           TargetGroupArn: !Ref TargetGroup2
-#   LogGroup2:
-#     Type: AWS::Logs::LogGroup
-#     Properties:
-#       LogGroupName: mysql
+  # ContainerSecurityGroup:
+  #   Description: A security group used to allow containers to receive traffic
+  #   Value: !Ref 'ContainerSecurityGroup'
+  #   Export:
+  #     Name: !Ref ContainerSecurityGroup

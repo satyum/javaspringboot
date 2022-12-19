@@ -1,8 +1,20 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: An example CloudFormation template for Fargate.
-# Parameters:
+Parameters:
+  RandomStringLength:
+    Type: Number
+    Default: 12
+  # VPC:
+  #   Type: String
+  #   Default: vpc-0eaee52251287de2d
+  # PrivateSubnetOne: 
+  #   Type: String
+  #   Default: subnet-02971cfdf444fc414
+  # PrivateSubnetTwo: 
+  #   Type: String
+  #   Default: subnet-076e7e43baa241d67
 
-  #   DBName:
+  # DBName:
   #   Description: RDS database name
   #   Type: AWS::SSM::Parameter::Value<String>
   #   Default: dbname
@@ -23,13 +35,109 @@ Description: An example CloudFormation template for Fargate.
 
 Resources:
 
+  LambdaRole: 
+    Type: "AWS::IAM::Role"
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Principal: 
+              Service: 
+                - "lambda.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+      Path: "/"
+
+  LambdaPolicy: 
+    Type: "AWS::IAM::Policy"
+    Properties: 
+      PolicyName: "LambdaPolicy"
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Action: 
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+              - "logs:CreateLogGroup"
+            Resource: "*"
+      Roles: 
+        - 
+          Ref: "LambdaRole"
+
+
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaRole.Arn 
+      Runtime: python3.7
+      Tags:
+        - Key : Name
+          Value : RandomizerLambda
+
+
+      Code:
+        ZipFile: |
+          import boto3
+          import random
+          import string
+          import cfnresponse
+          def lambda_handler(event, context):
+              responseData = {}
+              try:
+                  string_characters = string.ascii_letters + string.digits
+                  number_characters = string.digits
+                  responseData['RandomString']  = ''.join(random.choice(string_characters) for i in range(int(event["ResourceProperties"]["length"])))
+                  responseData['RandomNumber']  = ''.join(random.choice(number_characters) for i in range(int(event["ResourceProperties"]["length"])))
+                  responseData['Lower_RandomString'] = responseData['RandomString'].lower()
+                  responseData['UpperRandomString'] = responseData['RandomString'].upper()
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, "CustomResourcePhysicalID")
+              except Exception as e:
+                  print("Exception Error : " + str(e) )
+                  cfnresponse.send(event, context, cfnresponse.FAILED, responseData, "CustomResourcePhysicalID")
+
+
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the ECS containers
+      Fn::ImportValue: VPC
+
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the RDS instance
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '3306'
+        ToPort: '3306'
+        SourceSecurityGroupId: !Ref 'ECSSecurityGroup'
+      Tags:
+      - Key: Name
+        Value: RDS MySQL 3306 Access
+      VpcId:
+        Fn::ImportValue: VPC
+
+  # DBSecurityGroupIngressFromECS:
+  #   Type: AWS::EC2::SecurityGroupIngress
+  #   Properties:
+  #     DBSecurityGroupIngress:
+  #       EC2SecurityGroupName: !Ref 'ECSSecurityGroup'
+
+
+
+
   myDBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties: 
       DBSubnetGroupDescription: Private subnet for RDS
     
       SubnetIds: 
-        - Fn::ImportValue: PrivateSubnet1  #private                      ################################################
+        - Fn::ImportValue: PrivateSubnet1  
         - Fn::ImportValue: PrivateSubnet2
       Tags: 
         - Key: Name
@@ -38,73 +146,105 @@ Resources:
   DBinstance: 
     Type: AWS::RDS::DBInstance
     Properties: 
+      VPCSecurityGroups: 
+        - Ref: "DBSecurityGroup"
       DBSubnetGroupName: !Ref myDBSubnetGroup
       AllocatedStorage: 5
       DBInstanceClass: db.t3.small
       Engine: MySQL
-      MasterUsername: spring
-      MasterUserPassword: spring123
-      DBName: bootexample
+      MasterUsername: !GetAtt CallLambda.UpperRandomString
+      MasterUserPassword: !GetAtt CallLambda.RandomString  
+      DBName: db
     DeletionPolicy: Snapshot
 
-  DbSecurityByEC2SecurityGroup: 
-    Type: AWS::RDS::DBSecurityGroup
-    Properties: 
-      
-      GroupDescription: "Ingress for Amazon EC2 security group"
-      DBSecurityGroupIngress: 
-          CIDRIP: 0.0.0.0/0
 
 
 
-  # SSMRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     RoleName: SSMrole
-  #     AssumeRolePolicyDocument:
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal:
-  #             Service: ecs-tasks.amazonaws.com
-  #           Action: 'sts:AssumeRole'
-  #     ManagedPolicyArns:
-  #       - 'arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess'
+
+  SSMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: SSMrole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess'
   
-  # BasicParameter:
-  #   Type: AWS::SSM::Parameter
-  #   Properties:
-  #     Name: MYSQL_HOSTNAME
-  #     Type: String
-  #     Value: !GetAtt GetDBinstance.Endpoint.Address
-  #     Tier: Advanced
-  #    # Policies: '[{"Type":"Expiration","Version":"1.0","Attributes":{"Timestamp":"2020-05-13T00:00:00.000Z"}},{"Type":"ExpirationNotification","Version":"1.0","Attributes":{"Before":"5","Unit":"Days"}},{"Type":"NoChangeNotification","Version":"1.0","Attributes":{"After":"60","Unit":"Days"}}]'
-  #     Description: SSM Parameter for running date command.
-  #     #AllowedPattern: "^[a-zA-Z]{1,10}$"
-  #     Tags:
-  #       Environment: DEV
+  UserParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: dbusername
+      Type: String
+      Value: spring
+      Tier: Standard
+      Description: SSM Parameter 
+      
 
+  PassParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: dbpassword
+      Type: String
+      Value: !GetAtt CallLambda.RandomString                  ####################
+      Tier: Standard
+      Description: SSM Parameter 
+
+  DbParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: dbname
+      Type: String
+      Value: db
+      Tier: Standard
+      Description: SSM Parameter 
+
+  EndpointParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: dbendpoint
+      Type: String
+      Value: !GetAtt  DBinstance.Endpoint.Address
+      Tier: Standard
+      Description: SSM Parameter 
+
+  CallLambda:
+    Type: "Custom::CallLambda"
+    Properties:
+      ServiceToken: !GetAtt LambdaFunction.Arn
+      length: !Ref  RandomStringLength 
+    
 
 Outputs:
-  DBName:
-    Description: Database-password
-    Value: bootexample
-    Export:
-      Name: dbname
+  ECSSecurityGroup:
+    Description: "ecs group"
+    Value: !Ref ECSSecurityGroup
+    Export: 
+      Name: ECSSecurityGroup
+# Outputs:
+#   DBName:
+#     Description: Database-password
+#     Value: !Ref DBName
+#     Export:
+#       Name: dbname
 
-  DBUsername:
-    Description: Database-password
-    Value: spring
-    Export:
-      Name: dbusername
+#   DBUsername:
+#     Description: Database-password
+#     Value: !Ref DBUsername
+#     Export:
+#       Name: dbusername
 
-  DBPassword:
-    Description: Database-password
-    Value: spring123
-    Export:
-      Name: dbpassword
+#   DBPassword:
+#     Description: Database-password
+#     Value: !Ref DBPassword
+#     Export:
+#       Name: dbpassword
 
-  DBEndpoint:
-    Description: The connection endpoint for the database.
-    Value: !GetAtt  DBinstance.Endpoint.Address
-    Export:
-      Name: DBEndPoint 
+  # DBEndpoint:
+  #   Description: The connection endpoint for the database.
+  #   Value: !GetAtt  DBinstance.Endpoint.Address
+  #   Export:
+  #     Name: DBEndPoint 
