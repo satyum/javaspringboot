@@ -10,9 +10,9 @@
 * docker push 6xxxxxxxxx2.dkr.ecr.us-east-1.amazonaws.com/springboot:latest
 ```
 ## Templates
-* Network cloudformation template [network Template](https://github.com/satyum/javaspringboot/blob/master/templates/vpc.yml)
-* rds cloudformation template [rds Template](https://github.com/satyum/javaspringboot/blob/master/templates/rds.yml)
-* ecs cloudformation template [ecs Template](https://github.com/satyum/javaspringboot/blob/master/templates/rds.yml)
+* Network cloudformation template [network Template](https://raw.githubusercontent.com/satyum/javaspringboot/master/templates/vpc.yml)
+* rds cloudformation template [rds Template](https://raw.githubusercontent.com/satyum/javaspringboot/master/templates/rds.yml)
+* ecs cloudformation template [ecs Template](https://raw.githubusercontent.com/satyum/javaspringboot/master/templates/ecs.yml)
 
 
 
