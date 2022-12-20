@@ -86,12 +86,12 @@ aws cloudformation create-stack --stack-name ecs --template-body file://template
 ```
 
 
-## Check loadbalancer for hiting spring app api
-* Add /swagger-ui.html at the end of the dns to hit the main url
-
 
 ![dns](https://github.com/satyum/javaspringboot/blob/master/pictures/Screenshot%20from%202022-12-19%2012-34-07.png)
 
+
+## Check loadbalancer for hiting spring app api
+* Add /swagger-ui.html at the end of the dns to hit the main url
 
 
 ![mainroute](https://github.com/satyum/javaspringboot/blob/master/pictures/Screenshot%20from%202022-12-19%2012-33-28.png)
