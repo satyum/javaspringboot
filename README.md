@@ -1,6 +1,11 @@
 #  Java springboot and rds end to end deployment
 
+## Git clone the project
 
+```
+git clone https://github.com/satyum/javaspringboot.git
+
+```
 ## deploying Image by building and pushing it to ecr 
 ```
  aws account number = 6xxxxxxxxx2
