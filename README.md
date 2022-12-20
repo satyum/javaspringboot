@@ -22,8 +22,7 @@ push the image to the ecr
 * rds cloudformation template [rds Template](https://raw.githubusercontent.com/satyum/javaspringboot/master/templates/rds.yml)
 * ecs cloudformation template [ecs Template](https://raw.githubusercontent.com/satyum/javaspringboot/master/templates/ecs.yml)
  
- ## Note
-Please cd into templates folder before executing all the template
+
 
 
 
@@ -33,7 +32,7 @@ Use Region <b>us-east-1</b> or you can change accordingly
 -----------------------------------------------------------------------------------------------------------------------------------------------
 ### Now run cloud formtion template for creating VPC
 ```
-aws cloudformation create-stack --stack-name vpc --template-body file://vpc.yml --region=us-east-1
+aws cloudformation create-stack --stack-name vpc --template-body file://templates/vpc.yml --region=us-east-1
 ```
 By this stack, get some Export value
 So, use that values to any resource from this VPC
@@ -71,7 +70,7 @@ Outputs:
 ```
 ### Run another cloud formation for RDS 
 ```
-aws cloudformation create-stack --stack-name rds --template-body file://rds.yml  --region=us-east-1 --capabilities CAPABILITY_NAMED_IAM
+aws cloudformation create-stack --stack-name rds --template-body file://templates/rds.yml  --region=us-east-1 --capabilities CAPABILITY_NAMED_IAM
 ```
 From this , got the Endpoint of RDS and store that in Export
 ```
@@ -83,7 +82,7 @@ From this , got the Endpoint of RDS and store that in Export
 ```
 ### Now Run the final stack for deploying the ECS Infra using following CLI command 
 ```
-aws cloudformation create-stack --stack-name ecs --template-body file://ecs.yml --parameters ParameterKey=ImageUrl,ParameterValue=<image> --capabilities CAPABILITY_NAMED_IAM --region=us-east-1
+aws cloudformation create-stack --stack-name ecs --template-body file://templates/ecs.yml --parameters ParameterKey=ImageUrl,ParameterValue=<image> --capabilities CAPABILITY_NAMED_IAM --region=us-east-1
 ```
 
 
