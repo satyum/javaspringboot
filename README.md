@@ -4,7 +4,6 @@
 
 ```
 git clone https://github.com/satyum/javaspringboot.git
-
 ```
 ## deploying Image by building and pushing it to ecr 
 ```
